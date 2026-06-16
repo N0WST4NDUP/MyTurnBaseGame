@@ -80,6 +80,7 @@ _Recovery.meta
 
 # 에셋 폴더
 GeneratedAssets/
+GeneratedAssets.meta
 Assets/Imported/
 Assets/Imported.meta
 
