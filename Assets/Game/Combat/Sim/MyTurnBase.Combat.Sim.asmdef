@@ -1,0 +1,7 @@
+{
+	"name": "MyTurnBase.Combat.Sim",
+	"rootNamespace": "MyTurnBase.Combat.Sim",
+	"references": [],
+	"noEngineReferences": true,
+	"autoReferenced": true
+}
