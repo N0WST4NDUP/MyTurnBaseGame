@@ -15,8 +15,8 @@ Assets/Game/Combat/Sim/
   Core/        Cell · UnitId · TeamId · Unit · BattleState · Card · RoundInput
   Random/      IRng · XorShiftRng
   Events/      Phase · BattleEvent · (이벤트 8종)
-  Resolution/  IBattleResolver · StubBattleResolver
-  Tests/       (EditMode) BattleScenarios · DeterminismTests · RngTests
+  Resolution/  IBattleResolver · RoundResolver · BeatResolver · ResolutionUtil
+  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · RngTests
 ```
 
 ## 상태 모델
@@ -45,9 +45,21 @@ Assets/Game/Combat/Sim/
 - 각 이벤트 `ToString()` = **InvariantCulture 안정 1줄 표현**(결정론 비교 + 리플레이/디버그 텍스트).
 - (참고) 라운드 단위 마커(RoundStart/End)는 미도입 — 턴종료 +1 아크는 `ChargeEvent`로 표현.
 
-## #11 범위 / 다음
-- #11 = **타입 + 계약 + 결정론 골격**. `StubBattleResolver`는 자리표시(실제 규칙 아님).
-- 실제 해결: 슬롯 루프·비트 순서·Speed 우선도 = **#12**, 이동 = **#13**, 명중 판정 = **#14**.
+## 라운드 해결 (#12 `RoundResolver`)
+- **슬롯 1→2→3 순차.** 슬롯 내 비트 순서 = **이동 → 가드 → 공격 → 충전**(유닛 입력 순서가 아니라 비트로 재정렬).
+- **동시성**: 같은 비트는 '비트 시작 상태' 기준(이동은 목표를 먼저 모아 일괄 적용). **공격만** Speed 순차.
+- **공격 우선도**: Speed 내림차순, **정확 동률 → 시드 RNG**(Fisher-Yates, 동률 그룹만 소비). 근접 동률 '임계치'는 밸런스 = E3.
+- **선공 우선**: 빠른 쪽이 먼저 해결, 대상이 HP≤0이면 그 유닛은 이후 공격 불가(반격 무효).
+- **상태 = 가변 in-place**: 해결기가 `Unit.Hp/Arc/Pos`를 직접 변경(불변/클론 아님). 라운드 카운터(`s.Round`) 증가는 상위 전투 루프 몫.
+- **결정론 가드레일**: `Units`만 순회 · `Plans`는 키 조회만 · 동률은 RNG로만.
+- **구조**: `RoundResolver`(오케스트레이터, public) → `BeatResolver`(비트 적용) + `ResolutionUtil`(순수 헬퍼·정렬·PLACEHOLDER) — 뒤 둘은 `internal`.
+
+### PLACEHOLDER (후속 이슈가 교체)
+- `PhaseOf(Card)` 카드→비트 임시 매핑 = E2 **#16** · 이동 방향/사거리/충돌 = **#13** · 타겟팅·명중 = **#14** · 데미지 공식·가드 경감·아크 cap = **E3**.
+
+## 골격(#11) / 다음
+- #11 = 타입 + 계약 + 결정론 골격(`StubBattleResolver`는 #12에서 `RoundResolver`로 대체·삭제).
+- 다음: 이동 **#13** · 명중 판정 **#14** · 승패 **#15**.
 
 ## 테스트 (EditMode)
 - `DeterminismTests` — 동일 입력+시드 → 동일 타임라인 / 시드가 출력에 반영됨 / 타임라인 비어있지 않음.
