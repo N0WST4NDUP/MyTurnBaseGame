@@ -13,27 +13,29 @@ namespace MyTurnBase.Combat.Sim
 
     internal static class BeatResolver
     {
-        // PLACEHOLDER 데미지 — 실제 공식 = E3. defeat 파이프라인/선공우선 검증용 최소 양수값.
-        private const float PlaceholderHitDamage = 1f;
-        // PLACEHOLDER 기본 충전량 — 실제 n(캐릭터별)·cap = #16/E3.
-        private const int PlaceholderChargeAmount = 1;
+        private const float PlaceholderHitDamage = 1f; // PLACEHOLDER 데미지 — 실제 공식 = E3. defeat 파이프라인/선공우선 검증용 최소 양수값.
+        private const int PlaceholderChargeAmount = 1; // PLACEHOLDER 기본 충전량 — 실제 n(캐릭터별)·cap = #16/E3.
 
         // ── 비트: 이동 ─────────────────────────────────────────────
-        // 동시 이동: 모든 대상의 목표를 '비트 시작 위치' 기준으로 먼저 계산한 뒤 일괄 적용.
+        // 동시 이동: 비트 시작 위치 기준 목표를 먼저 모은 뒤 일괄 적용.
         public static void ResolveMoveBeat(BattleState s, int round, int slot, List<Unit> movers, List<BattleEvent> tl)
         {
             if (movers.Count == 0) return;
 
             var targets = new List<Cell>(movers.Count);
             foreach (var u in movers)
-                targets.Add(ResolutionUtil.PlaceholderMoveTarget(s, u));          // PLACEHOLDER #13
+            {
+                targets.Add(ResolutionUtil.PlaceholderMoveIntent(s, u)); // PLACEHOLDER #16: 카드가 방향 결정
+            }
 
             for (int i = 0; i < movers.Count; i++)
             {
                 var u = movers[i];
+                var to = targets[i];
+                if (to.Equals(u.Pos) || !Grid.InBounds(to)) continue; // 제자리(이동 없음) or 경계 밖 → 이벤트 없음
                 var from = u.Pos;
-                u.Pos = targets[i];
-                tl.Add(new MoveEvent(round, slot, u.Id, from, u.Pos));
+                u.Pos = to;
+                tl.Add(new MoveEvent(round, slot, u.Id, from, to));
             }
         }
 
@@ -62,7 +64,7 @@ namespace MyTurnBase.Combat.Sim
             var ordered = ResolutionUtil.OrderBySpeed(s.Rng, attackers);
             foreach (var u in ordered)
             {
-                if (!ResolutionUtil.IsAlive(u)) continue;                         // 이 비트에서 이미 처치됨(선공 우선)
+                if (!ResolutionUtil.IsAlive(u)) continue; // 이 비트에서 이미 처치됨(선공 우선)
 
                 ResolutionUtil.TryGetCard(input, u.Id, slot, out var card);       // 버킷 단계에서 존재 확인됨
                 var target = ResolutionUtil.PlaceholderTarget(s, u);              // PLACEHOLDER #14: 패턴→타격 셀→명중
@@ -96,8 +98,8 @@ namespace MyTurnBase.Combat.Sim
         {
             foreach (var u in chargers)
             {
-                if (!ResolutionUtil.IsAlive(u)) continue;                         // 공격 비트에서 처치됐을 수 있음
-                int amount = PlaceholderChargeAmount;              // PLACEHOLDER #16/E3: 캐릭터별 n·cap
+                if (!ResolutionUtil.IsAlive(u)) continue; // 공격 비트에서 처치됐을 수 있음
+                int amount = PlaceholderChargeAmount; // PLACEHOLDER #16/E3: 캐릭터별 n·cap
                 u.Arc += amount;
                 tl.Add(new ChargeEvent(round, slot, u.Id, amount, u.Arc));
             }
