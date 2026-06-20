@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -19,7 +18,7 @@ namespace MyTurnBase.Combat.Sim
         public static bool TryGetCard(RoundInput input, UnitId id, int slot, out Card card)
         {
             if (input?.Plans != null
-                && input.Plans.TryGetValue(id, out var cards)      // 키 조회만(열거 순서 비의존)
+                && input.Plans.TryGetValue(id, out var cards) // 키 조회만(열거 순서 비의존)
                 && cards != null && slot >= 0 && slot < cards.Length)
             {
                 card = cards[slot];
@@ -50,14 +49,15 @@ namespace MyTurnBase.Combat.Sim
         {
             for (int k = count - 1; k >= 1; k--)
             {
-                int r = rng.NextInt(k + 1);                        // [0, k]
+                int r = rng.NextInt(k + 1); // [0, k]
                 int a = start + k, b = start + r;
                 var tmp = list[a]; list[a] = list[b]; list[b] = tmp;
             }
         }
 
-        // PLACEHOLDER #13: 가장 가까운 적 방향으로 직교 1칸(클램프, 충돌 무시). 카드 기반 이동이 대체.
-        public static Cell PlaceholderMoveTarget(BattleState s, Unit u)
+        // PLACEHOLDER #16: 카드가 방향을 정할 때까지 '가장 가까운 적 쪽 직교 1칸' 의도만 생성.
+        // 경계·점유·경합 판정은 BeatResolver.ResolveMoveBeat가 담당(여기선 raw intent).
+        public static Cell PlaceholderMoveIntent(BattleState s, Unit u)
         {
             var enemy = PlaceholderTarget(s, u);
             if (enemy == null) return u.Pos;
@@ -65,9 +65,6 @@ namespace MyTurnBase.Combat.Sim
             int row = u.Pos.Row, col = u.Pos.Col;
             if (enemy.Pos.Col != col) col += enemy.Pos.Col > col ? 1 : -1;
             else if (enemy.Pos.Row != row) row += enemy.Pos.Row > row ? 1 : -1;
-
-            row = Math.Clamp(row, 0, BattleState.Rows - 1);
-            col = Math.Clamp(col, 0, BattleState.Cols - 1);
             return new Cell(row, col);
         }
 
@@ -79,7 +76,7 @@ namespace MyTurnBase.Combat.Sim
             foreach (var u in s.Units)
             {
                 if (!IsAlive(u) || u.Team.Value == self.Team.Value) continue;
-                int d = Math.Abs(u.Pos.Row - self.Pos.Row) + Math.Abs(u.Pos.Col - self.Pos.Col);
+                int d = Grid.Manhattan(self.Pos, u.Pos);
                 if (d < bestDist) { bestDist = d; best = u; }
             }
             return best;
