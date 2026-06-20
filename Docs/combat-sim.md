@@ -15,8 +15,8 @@ Assets/Game/Combat/Sim/
   Core/        Cell · UnitId · TeamId · Unit · BattleState · Card · RoundInput
   Random/      IRng · XorShiftRng
   Events/      Phase · BattleEvent · (이벤트 8종)
-  Resolution/  IBattleResolver · RoundResolver · BeatResolver · ResolutionUtil
-  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · RngTests
+  Resolution/  IBattleResolver · RoundResolver · BeatResolver · ResolutionUtil · Grid
+  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · MovementTests · GridTests · RngTests
 ```
 
 ## 상태 모델
@@ -55,11 +55,19 @@ Assets/Game/Combat/Sim/
 - **구조**: `RoundResolver`(오케스트레이터, public) → `BeatResolver`(비트 적용) + `ResolutionUtil`(순수 헬퍼·정렬·PLACEHOLDER) — 뒤 둘은 `internal`.
 
 ### PLACEHOLDER (후속 이슈가 교체)
-- `PhaseOf(Card)` 카드→비트 임시 매핑 = E2 **#16** · 이동 방향/사거리/충돌 = **#13** · 타겟팅·명중 = **#14** · 데미지 공식·가드 경감·아크 cap = **E3**.
+- `PhaseOf(Card)` 카드→비트 임시 매핑 = E2 **#16** · 이동 **방향**(`PlaceholderMoveIntent`) = E2 **#16** · 타겟팅·명중 = **#14** · 데미지 공식·가드 경감·아크 cap = **E3**.
+
+## 이동 / 그리드 (#13 `Grid` · `ResolveMoveBeat`)
+- **직교 1칸**(상하좌우) per 비트. 동시 이동 = 비트 시작 위치로 의도 수집 → 일괄 적용.
+- **점유 = 비배타(스택 허용)** — 여러 유닛이 같은 칸에 겹침 가능. **막는 건 경계뿐**(off-grid); pass-through/swap 허용.
+- **`MoveEvent` = 실제 칸 변화만**(to==from → 이벤트 없음; 제자리 가드).
+- **`Grid`**(internal): `InBounds` · `Manhattan` · `AreAdjacent` · **`UnitsAt`**(복수 — 스택 대응, #14 명중이 사용).
+- 이동 *방향*은 PLACEHOLDER(`PlaceholderMoveIntent` = 최근접 적 1칸) → 카드 데이터 = **#16**.
+- `Cell : IEquatable` 추가, 테스트용 `InternalsVisibleTo`(`AssemblyInfo.cs`). 테스트: `GridTests` · `MovementTests`.
 
 ## 골격(#11) / 다음
 - #11 = 타입 + 계약 + 결정론 골격(`StubBattleResolver`는 #12에서 `RoundResolver`로 대체·삭제).
-- 다음: 이동 **#13** · 명중 판정 **#14** · 승패 **#15**.
+- 다음: 명중 판정 **#14** · 승패 **#15**.
 
 ## 테스트 (EditMode)
 - `DeterminismTests` — 동일 입력+시드 → 동일 타임라인 / 시드가 출력에 반영됨 / 타임라인 비어있지 않음.
