@@ -8,6 +8,17 @@ namespace MyTurnBase.Combat.Sim.Tests
     // 동일 결과를 내는지(결정론) 비교할 수 있게 한다.
     internal static class BattleScenarios
     {
+        // CardData 팩토리(테스트 전용) — 비트 타입을 '명시적'으로 부여(과거 Card(int)%4 매핑 대체).
+        // 코스트·Speed·패턴·effects는 해결 로직 검증에 불필요하므로 기본값.
+        public static CardData MoveCard() => Card(Phase.Move);
+        public static CardData GuardCard() => Card(Phase.Guard);
+        public static CardData AttackCard() => Card(Phase.Attack);
+        public static CardData ChargeCard() => Card(Phase.Charge);
+
+        static CardData Card(Phase type) =>
+            new CardData(type, arcCost: 0, speed: 0, moveOffset: default,
+                attackPattern: null, effects: null, animKey: null, kind: CardKind.Common);
+
         // 1행 양 끝에 마주 선 2유닛(팀 0 vs 팀 1).
         public static BattleState TwoUnits(int seed)
         {
@@ -19,15 +30,15 @@ namespace MyTurnBase.Combat.Sim.Tests
             return new BattleState(units, new XorShiftRng(seed), round: 0);
         }
 
-        // 유닛별 3슬롯 계획(카드값 %4로 비트 분기를 다양하게 태움 → Move/Guard/Attack/Charge).
+        // 유닛별 3슬롯 계획(비트 타입을 다양하게 → Move/Guard/Attack/Charge).
         public static RoundInput SampleInput()
         {
             return new RoundInput
             {
-                Plans = new Dictionary<UnitId, Card[]>
+                Plans = new Dictionary<UnitId, CardData[]>
                 {
-                    { new UnitId(1), new[] { new Card(0), new Card(1), new Card(2) } },
-                    { new UnitId(2), new[] { new Card(2), new Card(3), new Card(0) } },
+                    { new UnitId(1), new[] { MoveCard(), GuardCard(), AttackCard() } },
+                    { new UnitId(2), new[] { AttackCard(), ChargeCard(), MoveCard() } },
                 }
             };
         }
@@ -44,13 +55,13 @@ namespace MyTurnBase.Combat.Sim.Tests
             return new BattleState(units, new XorShiftRng(seed), round: 0);
         }
 
-        // 두 유닛이 3슬롯 모두 공격(Card 값 %4==2 → Attack 비트).
+        // 두 유닛이 3슬롯 모두 공격(Phase.Attack).
         public static RoundInput BothAttack()
         {
-            var atk = new[] { new Card(2), new Card(2), new Card(2) };
+            var atk = new[] { AttackCard(), AttackCard(), AttackCard() };
             return new RoundInput
             {
-                Plans = new Dictionary<UnitId, Card[]>
+                Plans = new Dictionary<UnitId, CardData[]>
                 {
                     { new UnitId(1), atk },
                     { new UnitId(2), atk },
