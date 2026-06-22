@@ -10,8 +10,8 @@ namespace MyTurnBase.Combat.Sim
     //   - 확정 결정: 상태 = 가변 in-place / 공격 = 선공 우선(처치된 대상은 반격 못 함).
     //
     // 범위 밖(아래 'PLACEHOLDER' 지점을 후속 이슈가 교체):
-    //   - 카드→비트 매핑(PhaseOf)           : 실제 카드 데이터 = E2 #16
-    //   - 실제 이동 규칙(방향·사거리·충돌)  : #13
+    //   - 카드→비트 매핑                    : CardData.Type이 직접 보유(#16 완료)
+    //   - 실제 이동 규칙(방향·사거리·충돌)  : #13(MoveOffset 소비)
     //   - 타겟팅·명중 판정(패턴→타격 셀)    : #14
     //   - 데미지 공식·가드 경감·아크 cap    : E3
     //
@@ -38,7 +38,7 @@ namespace MyTurnBase.Combat.Sim
                     if (!ResolutionUtil.IsAlive(u)) continue;
                     if (!ResolutionUtil.TryGetCard(input, u.Id, slot, out var card)) continue;
 
-                    var phase = ResolutionUtil.PhaseOf(card);
+                    var phase = card.Type;
                     switch (phase)
                     {
                         case Phase.Move: movers.Add(u); break;

@@ -12,11 +12,15 @@
 ```
 Assets/Game/Combat/Sim/
   MyTurnBase.Combat.Sim.asmdef     (noEngineReferences)
-  Core/        Cell · UnitId · TeamId · Unit · BattleState · Card · RoundInput
+  Core/        Cell · UnitId · TeamId · Unit · BattleState · CardData · CardKind · EffectSpec · RoundInput
   Random/      IRng · XorShiftRng
   Events/      Phase · BattleEvent · (이벤트 8종)
   Resolution/  IBattleResolver · RoundResolver · BeatResolver · ResolutionUtil · Grid
-  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · MovementTests · GridTests · RngTests
+  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · MovementTests · GridTests · RngTests · CardDataTests
+
+Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs Sim, noEngineReferences=false)
+  CardSO.cs                        (ScriptableObject 저작 · CreateAssetMenu "MyTurnBase/Card" · ToData())
+  Tests/       (EditMode) CardSOTests
 ```
 
 ## 상태 모델
@@ -32,8 +36,9 @@ Assets/Game/Combat/Sim/
 - **보장 범위 = 동일 빌드 내.** HP가 float라 머신/아키텍처가 다른 PvP의 정확 재현은 후속 과제 — 데미지 수식을 한 곳에 모아 추후 고정소수점 교체 여지를 남긴다.
 
 ## 입력 / 해결 계약
-- `RoundInput` — 유닛별 3슬롯 계획: `IReadOnlyDictionary<UnitId, Card[]> Plans` (각 배열 길이 3).
-- `Card{int Value}` — 추상 카드 핸들. 실제 카드 데이터·효과는 E2(#16).
+- `RoundInput` — 유닛별 3슬롯 계획: `IReadOnlyDictionary<UnitId, CardData[]> Plans` (각 배열 길이 3).
+- `CardData` — 런타임 카드 데이터(순수 C#·불변): `Phase Type · int ArcCost · int Speed · Cell MoveOffset · IReadOnlyList<Cell> AttackPattern · IReadOnlyList<EffectSpec> Effects · string AnimKey · CardKind Kind`. 저작은 Unity `CardSO`(별도 어셈블리 `MyTurnBase.Cards`) → `ToData()`로 변환. (#16, E2)
+  - `MoveOffset` 필드만 정의 — 이동 방향 **소비는 #13**. `AttackPattern` 필드만 정의 — 명중 판정은 **#14**. `Effects` 슬롯만 정의 — 효과 실행은 **#17**.
 - `interface IBattleResolver { IReadOnlyList<BattleEvent> ResolveRound(BattleState, RoundInput); }`.
 - **결정론 가드레일**: 해결기는 순서 있는 `Units`만 순회하고 `Plans`(Dictionary)는 **키 조회만**(열거 순서 의존 금지).
 
@@ -55,7 +60,8 @@ Assets/Game/Combat/Sim/
 - **구조**: `RoundResolver`(오케스트레이터, public) → `BeatResolver`(비트 적용) + `ResolutionUtil`(순수 헬퍼·정렬·PLACEHOLDER) — 뒤 둘은 `internal`.
 
 ### PLACEHOLDER (후속 이슈가 교체)
-- `PhaseOf(Card)` 카드→비트 임시 매핑 = E2 **#16** · 이동 **방향**(`PlaceholderMoveIntent`) = E2 **#16** · 타겟팅·명중 = **#14** · 데미지 공식·가드 경감·아크 cap = **E3**.
+- ~~카드→비트 매핑~~ → `CardData.Type`이 직접 보유(**#16 완료**, `PhaseOf` %4 임시매핑 제거).
+- 이동 **방향**(`PlaceholderMoveIntent`) = **#13** (`CardData.MoveOffset` 소비) · 타겟팅·명중(`PlaceholderTarget`) = **#14** · 데미지 공식·가드 경감·아크 cap·충전량 n = **E3**.
 
 ## 이동 / 그리드 (#13 `Grid` · `ResolveMoveBeat`)
 - **직교 1칸**(상하좌우) per 비트. 동시 이동 = 비트 시작 위치로 의도 수집 → 일괄 적용.

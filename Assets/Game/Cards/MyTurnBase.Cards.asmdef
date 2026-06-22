@@ -1,0 +1,16 @@
+{
+    "name": "MyTurnBase.Cards",
+    "rootNamespace": "MyTurnBase.Cards",
+    "references": [
+        "MyTurnBase.Combat.Sim"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

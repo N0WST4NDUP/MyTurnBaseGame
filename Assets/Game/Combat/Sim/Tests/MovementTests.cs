@@ -7,12 +7,12 @@ namespace MyTurnBase.Combat.Sim.Tests
     // #13 이동: 직교 1칸 · 스택 허용(배타 점유 없음) · 경계 제약 · 제자리 이벤트 없음.
     public class MovementTests
     {
-        // 지정 유닛들이 3슬롯 전부 이동 카드(Card%4==0 → Move 비트).
+        // 지정 유닛들이 3슬롯 전부 이동 카드(Phase.Move).
         static RoundInput AllMove(params int[] unitIds)
         {
-            var plans = new Dictionary<UnitId, Card[]>();
+            var plans = new Dictionary<UnitId, CardData[]>();
             foreach (var id in unitIds)
-                plans[new UnitId(id)] = new[] { new Card(0), new Card(0), new Card(0) };
+                plans[new UnitId(id)] = new[] { BattleScenarios.MoveCard(), BattleScenarios.MoveCard(), BattleScenarios.MoveCard() };
             return new RoundInput { Plans = plans };
         }
 

@@ -7,22 +7,16 @@ namespace MyTurnBase.Combat.Sim
     {
         public static bool IsAlive(Unit u) => u.Hp > 0f;
 
-        // 카드 → 비트. PLACEHOLDER: 실제 매핑은 카드 데이터(E2 #16)가 결정.
-        // enum Phase{Move=0,Guard=1,Attack=2,Charge=3}에 1:1 임시 매핑(음수 안전).
-        public static Phase PhaseOf(Card card)
-        {
-            int k = ((card.Value % 4) + 4) % 4;
-            return (Phase)k;
-        }
+        // 카드 → 비트는 이제 CardData.Type이 직접 보유(#16). 임시 %4 매핑(PhaseOf) 제거.
 
-        public static bool TryGetCard(RoundInput input, UnitId id, int slot, out Card card)
+        public static bool TryGetCard(RoundInput input, UnitId id, int slot, out CardData card)
         {
             if (input?.Plans != null
                 && input.Plans.TryGetValue(id, out var cards) // 키 조회만(열거 순서 비의존)
                 && cards != null && slot >= 0 && slot < cards.Length)
             {
                 card = cards[slot];
-                return true;
+                return card != null; // null 슬롯 = 행동 없음(참조형 CardData → NRE 방지; 구조체 시절과 동일하게 안전)
             }
             card = default;
             return false;

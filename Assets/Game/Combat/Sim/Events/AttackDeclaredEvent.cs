@@ -9,10 +9,10 @@ namespace MyTurnBase.Combat.Sim
     // StrikeCells: 비어 있을 수는 있으나 null 금지(resolver가 항상 리스트 제공).
     public sealed class AttackDeclaredEvent : BattleEvent
     {
-        public readonly Card Card;
+        public readonly CardData Card;
         public readonly IReadOnlyList<Cell> StrikeCells;
 
-        public AttackDeclaredEvent(int round, int slot, UnitId actor, Card card, IReadOnlyList<Cell> strikeCells)
+        public AttackDeclaredEvent(int round, int slot, UnitId actor, CardData card, IReadOnlyList<Cell> strikeCells)
             : base(round, slot, Phase.Attack, actor)
         {
             Card = card;
@@ -24,8 +24,9 @@ namespace MyTurnBase.Combat.Sim
             var cells = StrikeCells == null
                 ? ""
                 : string.Join(";", StrikeCells.Select(c => FormattableString.Invariant($"({c.Row},{c.Col})")));
+            var card = Card != null ? Card.Type.ToString() : "null"; // enum ToString = 안정(InvariantCulture)
             return FormattableString.Invariant(
-                $"R{Round} S{Slot} {Phase} a={Actor.Value} ATK_DECL card={Card.Value} cells=[{cells}]");
+                $"R{Round} S{Slot} {Phase} a={Actor.Value} ATK_DECL card={card} cells=[{cells}]");
         }
     }
 }
