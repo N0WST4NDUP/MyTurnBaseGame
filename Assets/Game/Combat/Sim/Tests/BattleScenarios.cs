@@ -12,12 +12,17 @@ namespace MyTurnBase.Combat.Sim.Tests
         // 코스트·Speed·패턴·effects는 해결 로직 검증에 불필요하므로 기본값.
         public static CardData MoveCard() => Card(Phase.Move);
         public static CardData GuardCard() => Card(Phase.Guard);
-        public static CardData AttackCard() => Card(Phase.Attack);
+        public static CardData AttackCard() => AttackCard(new Cell(0, 1));
         public static CardData ChargeCard() => Card(Phase.Charge);
 
         static CardData Card(Phase type) =>
             new CardData(type, arcCost: 0, speed: 0, moveOffset: default,
                 attackPattern: null, effects: null, animKey: null, kind: CardKind.Common);
+
+        // 커스텀 패턴(자기 기준 상대 오프셋) 공격 카드. #14 명중 테스트용.
+        public static CardData AttackCard(params Cell[] pattern) =>
+            new CardData(Phase.Attack, arcCost: 0, speed: 0, moveOffset: default,
+                attackPattern: pattern, effects: null, animKey: null, kind: CardKind.Common);
 
         // 1행 양 끝에 마주 선 2유닛(팀 0 vs 팀 1).
         public static BattleState TwoUnits(int seed)

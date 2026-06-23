@@ -16,7 +16,7 @@ Assets/Game/Combat/Sim/
   Random/      IRng · XorShiftRng
   Events/      Phase · BattleEvent · (이벤트 8종)
   Resolution/  IBattleResolver · RoundResolver · BeatResolver · ResolutionUtil · Grid
-  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · MovementTests · GridTests · RngTests · CardDataTests
+  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · MovementTests · GridTests · RngTests · CardDataTests · AttackPatternTests
 
 Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs Sim, noEngineReferences=false)
   CardSO.cs                        (ScriptableObject 저작 · CreateAssetMenu "MyTurnBase/Card" · ToData())
@@ -61,7 +61,7 @@ Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs
 
 ### PLACEHOLDER (후속 이슈가 교체)
 - ~~카드→비트 매핑~~ → `CardData.Type`이 직접 보유(**#16 완료**, `PhaseOf` %4 임시매핑 제거).
-- 이동 **방향**(`PlaceholderMoveIntent`) = **#13** (`CardData.MoveOffset` 소비) · 타겟팅·명중(`PlaceholderTarget`) = **#14** · 데미지 공식·가드 경감·아크 cap·충전량 n = **E3**.
+- 공격 **타겟팅·명중**(패턴→타격 셀) = **#14 완료**(아래 「공격 패턴·명중 판정」). · 이동 **방향**(`PlaceholderMoveIntent` = 최근접 적, `MoveOffset` 미소비) = 후속 · 데미지 공식·가드 경감·아크 cap·충전량 n = **E3**.
 
 ## 이동 / 그리드 (#13 `Grid` · `ResolveMoveBeat`)
 - **직교 1칸**(상하좌우) per 비트. 동시 이동 = 비트 시작 위치로 의도 수집 → 일괄 적용.
@@ -71,11 +71,20 @@ Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs
 - 이동 *방향*은 PLACEHOLDER(`PlaceholderMoveIntent` = 최근접 적 1칸) → 카드 데이터 = **#16**.
 - `Cell : IEquatable` 추가, 테스트용 `InternalsVisibleTo`(`AssemblyInfo.cs`). 테스트: `GridTests` · `MovementTests`.
 
+## 공격 패턴·명중 판정 (#14 `ResolveStrikeCells` · `CollectVictims`)
+- **공격 = `card.AttackPattern`(자기 기준 상대 오프셋) → orientation 회전 → 절대 타격 셀.** `PlaceholderTarget` 단일 타깃을 대체.
+- **orientation = 최근접 적 카디널 4방**(`FacingToward`): 우세 축으로 결정(동률 = 수평 우선), 적 없음·동일 칸 → 기본 동쪽(+col). *매 판정 시 현재 위치로 재산출 → 유닛이 서로 지나쳐도(p2-p1) 방향 모호성 없음.*
+  - 패턴은 '동쪽(+col) 정면' 정준 프레임 저작 → forward `(fr,fc)`로 90° 회전: `(r,c) → (c·fr + r·fc, c·fc − r·fr)`. 경계 밖 셀 드롭·중복 셀 제거.
+- **명중 = `CollectVictims`**: `s.Units` 순회로 타격 셀에 있는 **적**을 수집 — **스택이면 한 셀 다수, 여러 셀 = AoE(다중 명중)**. 아군·자기 제외, 위치는 하나라 자연 de-dup, 순서는 `Units`(결정론).
+- **이벤트**: `AttackDeclared`(타격 셀들) → 피격마다 `Hit`+`Damage`(데미지=PLACEHOLDER/E3)+(HP≤0)`Defeat`. 적 0 → `Miss`. **선공 우선**(처치된 공격자 skip) 유지.
+- `PlaceholderTarget`은 이제 이동 의도·공격 facing 공용 '최근접 적' 헬퍼(placeholder 아님). 방향 *수동 조절*(소켓)은 orientation 파라미터로 후속 주입 = 포스트-MVP.
+
 ## 골격(#11) / 다음
 - #11 = 타입 + 계약 + 결정론 골격(`StubBattleResolver`는 #12에서 `RoundResolver`로 대체·삭제).
-- 다음: 명중 판정 **#14** · 승패 **#15**.
+- 다음: 승패 **#15**(HP≤0 판정·무승부 엣지).
 
 ## 테스트 (EditMode)
 - `DeterminismTests` — 동일 입력+시드 → 동일 타임라인 / 시드가 출력에 반영됨 / 타임라인 비어있지 않음.
 - `RngTests` — 같은 시드 같은 시퀀스 / 범위 / `NextInt(<=0)` throw / seed 0 비잠금.
+- `AttackPatternTests` — orientation 좌/우·통과(p2-p1) · 스택 다중 명중 · 라인 AoE · 빈 패턴 Miss · 경계 드롭 · 아군 제외.
 - 실행: Unity **Test Runner → EditMode**.

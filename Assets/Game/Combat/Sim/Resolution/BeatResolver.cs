@@ -64,32 +64,34 @@ namespace MyTurnBase.Combat.Sim
             var ordered = ResolutionUtil.OrderBySpeed(s.Rng, attackers);
             foreach (var u in ordered)
             {
-                if (!ResolutionUtil.IsAlive(u)) continue; // 이 비트에서 이미 처치됨(선공 우선)
+                if (!ResolutionUtil.IsAlive(u)) continue; // 선공 우선: 이 비트에서 이미 처치됨
 
-                ResolutionUtil.TryGetCard(input, u.Id, slot, out var card);       // 버킷 단계에서 존재 확인됨
-                var target = ResolutionUtil.PlaceholderTarget(s, u);              // PLACEHOLDER #14: 패턴→타격 셀→명중
-                var strikeCells = target != null ? new[] { target.Pos } : Array.Empty<Cell>();
+                ResolutionUtil.TryGetCard(input, u.Id, slot, out var card); // 버킷 단계에서 존재 확인됨
+                var strikeCells = ResolutionUtil.ResolveStrikeCells(s, u, card); // #14: 패턴→방향→절대 셀
 
                 tl.Add(new AttackDeclaredEvent(round, slot, u.Id, card, strikeCells));
 
-                if (target == null)
+                var victims = ResolutionUtil.CollectVictims(s, u, strikeCells); // 스택 대응 다중 명중
+                if (victims.Count == 0)
                 {
                     tl.Add(new MissEvent(round, slot, u.Id));
                     continue;
                 }
 
-                tl.Add(new HitEvent(round, slot, u.Id, target.Id, target.Pos));
+                foreach (var target in victims)
+                {
+                    tl.Add(new HitEvent(round, slot, u.Id, target.Id, target.Pos));
 
-                // PLACEHOLDER 데미지(E3). 완전가드면 0, 기본가드면 고정 경감(와이어링만).
-                float amount = PlaceholderHitDamage;
-                if (guards.TryGetValue(target.Id, out var g))
-                    amount = g.Full ? 0f : Math.Max(0f, amount - g.Reduction);
+                    float amount = PlaceholderHitDamage; // PLACEHOLDER 데미지 = E3
+                    if (guards.TryGetValue(target.Id, out var g))
+                        amount = g.Full ? 0f : Math.Max(0f, amount - g.Reduction);
 
-                target.Hp -= amount;
-                tl.Add(new DamageEvent(round, slot, u.Id, target.Id, amount, target.Hp));
+                    target.Hp -= amount;
+                    tl.Add(new DamageEvent(round, slot, u.Id, target.Id, amount, target.Hp));
 
-                if (!ResolutionUtil.IsAlive(target))
-                    tl.Add(new DefeatEvent(round, slot, target.Id));
+                    if (!ResolutionUtil.IsAlive(target))
+                        tl.Add(new DefeatEvent(round, slot, target.Id));
+                }
             }
         }
 
