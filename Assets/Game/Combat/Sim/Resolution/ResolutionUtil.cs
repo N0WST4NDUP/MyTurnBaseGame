@@ -49,21 +49,8 @@ namespace MyTurnBase.Combat.Sim
             }
         }
 
-        // PLACEHOLDER #16: 카드가 방향을 정할 때까지 '가장 가까운 적 쪽 직교 1칸' 의도만 생성.
-        // 경계·점유·경합 판정은 BeatResolver.ResolveMoveBeat가 담당(여기선 raw intent).
-        public static Cell PlaceholderMoveIntent(BattleState s, Unit u)
-        {
-            var enemy = PlaceholderTarget(s, u);
-            if (enemy == null) return u.Pos;
-
-            int row = u.Pos.Row, col = u.Pos.Col;
-            if (enemy.Pos.Col != col) col += enemy.Pos.Col > col ? 1 : -1;
-            else if (enemy.Pos.Row != row) row += enemy.Pos.Row > row ? 1 : -1;
-            return new Cell(row, col);
-        }
-
         // 최근접(맨해튼) 살아있는 적. 거리 동률 = Units 순서(결정론).
-        // 이동 의도(PlaceholderMoveIntent)와 공격 facing(ResolveStrikeCells) 둘 다 사용.
+        // 이동 의도(MoveEffect)와 공격 facing(ResolveStrikeCells) 둘 다 사용.
         // (이름은 #11 잔재 — 이제 placeholder 아님. NearestEnemy로 개명해도 좋음.)
         public static Unit PlaceholderTarget(BattleState s, Unit self)
         {

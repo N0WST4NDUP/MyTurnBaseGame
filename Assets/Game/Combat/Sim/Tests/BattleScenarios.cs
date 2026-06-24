@@ -8,21 +8,22 @@ namespace MyTurnBase.Combat.Sim.Tests
     // 동일 결과를 내는지(결정론) 비교할 수 있게 한다.
     internal static class BattleScenarios
     {
-        // CardData 팩토리(테스트 전용) — 비트 타입을 '명시적'으로 부여(과거 Card(int)%4 매핑 대체).
-        // 코스트·Speed·패턴·effects는 해결 로직 검증에 불필요하므로 기본값.
-        public static CardData MoveCard() => Card(Phase.Move);
-        public static CardData GuardCard() => Card(Phase.Guard);
+        // CardData 팩토리(테스트 전용). #17 이후 실행 라우팅은 effects[]의 Phase가 구동 →
+        // 각 카드에 매칭 기본 effect를 부착한다(Type만으론 무동작). Type은 메타로 함께 부여.
+        public static CardData MoveCard() => Card(Phase.Move, new EffectSpec(EffectKeys.Move, 1));
+        public static CardData GuardCard() => Card(Phase.Guard, new EffectSpec(EffectKeys.Guard, 0));
         public static CardData AttackCard() => AttackCard(new Cell(0, 1));
-        public static CardData ChargeCard() => Card(Phase.Charge);
+        public static CardData ChargeCard() => Card(Phase.Charge, new EffectSpec(EffectKeys.Charge, 1));
 
-        static CardData Card(Phase type) =>
+        static CardData Card(Phase type, EffectSpec effect) =>
             new CardData(type, arcCost: 0, speed: 0, moveOffset: default,
-                attackPattern: null, effects: null, animKey: null, kind: CardKind.Common);
+                attackPattern: null, effects: new[] { effect }, animKey: null, kind: CardKind.Common);
 
-        // 커스텀 패턴(자기 기준 상대 오프셋) 공격 카드. #14 명중 테스트용.
+        // 커스텀 패턴(자기 기준 상대 오프셋) 공격 카드. #14 명중 테스트용. 피해 effect 부착.
         public static CardData AttackCard(params Cell[] pattern) =>
             new CardData(Phase.Attack, arcCost: 0, speed: 0, moveOffset: default,
-                attackPattern: pattern, effects: null, animKey: null, kind: CardKind.Common);
+                attackPattern: pattern, effects: new[] { new EffectSpec(EffectKeys.Damage, 1) },
+                animKey: null, kind: CardKind.Common);
 
         // 1행 양 끝에 마주 선 2유닛(팀 0 vs 팀 1).
         public static BattleState TwoUnits(int seed)
