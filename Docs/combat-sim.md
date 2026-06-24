@@ -16,8 +16,8 @@ Assets/Game/Combat/Sim/
   Random/      IRng · XorShiftRng
   Events/      Phase · BattleEvent · (이벤트 8종)
   Effects/     IEffect · EffectContext · EffectRegistry · EffectKeys · GuardState · MoveEffect · DamageEffect · GuardEffect · ChargeEffect  (#17)
-  Resolution/  IBattleResolver · RoundResolver · BeatResolver(+BeatEntry) · ResolutionUtil · Grid
-  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · MovementTests · GridTests · RngTests · CardDataTests · AttackPatternTests · EffectTests
+  Resolution/  IBattleResolver · RoundResolver · BeatResolver(+BeatEntry) · ResolutionUtil · Grid · DamagePipeline
+  Tests/       (EditMode) BattleScenarios · DeterminismTests · ResolutionTests · MovementTests · GridTests · RngTests · CardDataTests · AttackPatternTests · EffectTests · DamagePipelineTests
 
 Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs Sim, noEngineReferences=false)
   CardSO.cs                        (ScriptableObject 저작 · CreateAssetMenu "MyTurnBase/Card" · ToData())
@@ -62,7 +62,7 @@ Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs
 
 ### PLACEHOLDER (후속 이슈가 교체)
 - ~~카드→비트 매핑~~ → `CardData.Type`이 직접 보유(**#16 완료**, `PhaseOf` %4 임시매핑 제거).
-- 공격 **타겟팅·명중**(패턴→타격 셀) = **#14 완료**(아래 「공격 패턴·명중 판정」). · 이동 **방향**(`PlaceholderMoveIntent` = 최근접 적, `MoveOffset` 미소비) = 후속 · 데미지 공식·가드 경감·아크 cap·충전량 n = **E3**.
+- 공격 **타겟팅·명중**(패턴→타격 셀) = **#14 완료**(아래 「공격 패턴·명중 판정」). 데미지 **공식 구조**(기본→가산→곱연산) = **#20 완료**(`DamagePipeline`, 아래). · 이동 **방향**(`PlaceholderMoveIntent` = 최근접 적, `MoveOffset` 미소비) = 후속 · 데미지·가드 **수치**·아크 cap·충전량 n = **E3**.
 
 ## 이동 / 그리드 (#13 `Grid` · `ResolveMoveBeat`)
 - **직교 1칸**(상하좌우) per 비트. 동시 이동 = 비트 시작 위치로 의도 수집 → 일괄 적용.
@@ -86,8 +86,15 @@ Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs
 - **레지스트리** `EffectRegistry`: `EffectKey→IEffect` 정적 dict(키 조회만 = 결정론). 미등록 키 → `InvalidOperationException`(fail-fast). **새 효과 = `IEffect` 구현 + `Register` → resolver/비트러너 무수정**(확장성 핵심). 기본4 키 = `EffectKeys`(move/damage/guard/charge).
 - **오케스트레이션은 비트러너(BeatResolver)가 소유, effect는 동작만**: 이동=비트시작 스냅샷 일괄적용 / 공격=Speed순·선공우선·패턴(#14)·victim수집은 프레임, victim당 데미지만 effect / 충전=사망 스킵. → 기존 #12/#13/#14 동작·이벤트 타임라인 **보존**(회귀 테스트 그대로 통과).
 - **이벤트 분리 유지**: 프레임이 `AttackDeclared`·`Hit`·`Miss`·`Defeat`(기하/판정), `DamageEffect`가 `Damage`(피해). `MoveEffect`=`Move`, `GuardEffect`=`Guard`, `ChargeEffect`=`Charge`.
-- **수치는 PLACEHOLDER**: 데미지·충전량·가드 경감·`EffectSpec.Magnitude` 소비 = **E3**(#19/#20/#21)가 effect 내부를 채움.
+- **수치는 PLACEHOLDER → E3**: `EffectSpec.Magnitude` 소비·충전량·가드 경감 수치 = E3(#19/#21). **데미지 공식 구조(기본→가산→곱연산)는 #20이 `DamageEffect` 내부에 채움**(`DamagePipeline`, 아래) — 수치는 여전히 E3.
 - **후속(국소 변경)**: ①`Magnitude=int` → 데미지 float 곱연산 시 필드 확장(#20). ②4비트 밖 효과(회복·상태이상) → MVP는 기존 비트 재사용(회복=Charge, 상태부여=Attack rider), 진짜 새 타이밍은 `Phase`+beatOrder 확장. ③빈 effects[] 카드=무동작 → CardSO 검증(#18).
+
+## 데미지 파이프라인 (#20 `DamagePipeline`)
+- **구조 = 기본 → 가산 보정 → 곱연산 배율**: `Compute(기본, 가산, 곱연산) = (기본 + 가산) × 곱연산`, 0 미만 클램프. `ApplyGuard`: 완전 → 0, 기본 → `max(0, dmg − 고정 N)`. 데미지 수식을 **한 곳에 모음** → 추후 크로스플랫폼 결정론용 고정소수점 교체 단일 지점.
+- **통합 = `DamageEffect.Apply`(#17)** — `DamageEffect`의 placeholder를 `DamagePipeline.Compute/ApplyGuard`로 교체(공격 비트 victim당 호출). 옛 인라인(`ResolveAttackBeat`)이 아니라 효과 안에서.
+- **가산0·곱1·기본=PLACEHOLDER 스텁**(소스 = 효과 `EffectSpec`(#17) · 수치 = 밸런스 E3) — 하드코딩 밸런스 없음.
+- **HP 미변경**: `Unit.Hp`(float) 그대로 차감. `MaxHp`·상한·HP floor·회복 = **E4/회복 이슈**(`IsAlive(>0)`가 음수도 죽음 처리 → floor 불요).
+- 테스트 `DamagePipelineTests`(가산→곱연산 순서·곱연산 반영·음수 클램프·완전/기본 가드).
 
 ## 골격(#11) / 다음
 - #11 = 타입 + 계약 + 결정론 골격(`StubBattleResolver`는 #12에서 `RoundResolver`로 대체·삭제).
@@ -98,4 +105,5 @@ Assets/Game/Cards/                 (Unity 어셈블리 MyTurnBase.Cards → refs
 - `RngTests` — 같은 시드 같은 시퀀스 / 범위 / `NextInt(<=0)` throw / seed 0 비잠금.
 - `AttackPatternTests` — orientation 좌/우·통과(p2-p1) · 스택 다중 명중 · 라인 AoE · 빈 패턴 Miss · 경계 드롭 · 아군 제외.
 - `EffectTests` — 레지스트리(기본4 비트·미등록 throw) · effect-구동 라우팅(effect 없는 카드 무동작) · 멀티비트 카드(이동→신위치 공격) · 확장성(신규 effect 등록·resolver 무수정) · 결정론.
+- `DamagePipelineTests` — 기본→가산→곱연산 순서 · 곱연산 반영 · 음수 클램프 · 완전/기본 가드.
 - 실행: Unity **Test Runner → EditMode**.

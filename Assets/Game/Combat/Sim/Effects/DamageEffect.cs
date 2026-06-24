@@ -1,5 +1,3 @@
-using System;
-
 namespace MyTurnBase.Combat.Sim
 {
     // 피해 효과(#17). 공격 비트서 프레임이 victim마다 호출(ctx.CurrentVictim 세팅 후).
@@ -16,9 +14,12 @@ namespace MyTurnBase.Combat.Sim
             var victim = ctx.CurrentVictim;
             if (victim == null) return; // 방어적 — 프레임이 항상 세팅
 
-            float amount = PlaceholderHitDamage;
+            // #20 데미지 파이프라인: 기본 → 가산 → 곱연산 → 가드. (가산0·곱1·기본=PLACEHOLDER; 소스=#17·수치=E3)
+            float amount = DamagePipeline.Compute(PlaceholderHitDamage, additive: 0f, multiplier: 1f);
             if (ctx.Guards != null && ctx.Guards.TryGetValue(victim.Id, out var g))
-                amount = g.Full ? 0f : Math.Max(0f, amount - g.Reduction);
+            {
+                amount = DamagePipeline.ApplyGuard(amount, g.Full, g.Reduction);
+            }
 
             victim.Hp -= amount;
             ctx.Timeline.Add(new DamageEvent(ctx.Round, ctx.Slot, ctx.Self.Id, victim.Id, amount, victim.Hp));
