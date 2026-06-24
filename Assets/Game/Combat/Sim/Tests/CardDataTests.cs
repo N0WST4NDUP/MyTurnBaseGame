@@ -4,7 +4,7 @@ using NUnit.Framework;
 
 namespace MyTurnBase.Combat.Sim.Tests
 {
-    // #16 카드 데이터 모델: 생성자 정규화 + CardData.Type이 비트 분기를 구동(과거 %4 placeholder 대체).
+    // #16 카드 데이터 모델: 생성자 정규화. #17 이후 비트 분기는 effects[]의 Phase가 구동(Type은 메타).
     public class CardDataTests
     {
         [Test]
@@ -39,9 +39,9 @@ namespace MyTurnBase.Combat.Sim.Tests
             Assert.AreEqual(CardKind.Unique, c.Kind);
         }
 
-        // CardData.Type이 실제로 해당 비트 이벤트를 만든다(위치 무관한 Guard/Charge로 검증).
+        // effects[]의 Phase가 실제로 해당 비트 이벤트를 만든다(위치 무관한 Guard/Charge로 검증).
         [Test]
-        public void CardType_RoutesToMatchingBeat()
+        public void Effect_RoutesToMatchingBeat()
         {
             var s = BattleScenarios.TwoUnits(1);
             var input = new RoundInput
